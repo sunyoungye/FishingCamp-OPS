@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fab97a6e9b24b164f96f2bd8290fe685, type: 3}
+  m_Name: golden_minnow
+  m_EditorClassIdentifier: 
+  fishId: golden_minnow
+  fishName: "\uD669\uAE08 \uD53C\uB77C\uBBF8"
+  rarity: 2
+  fishSprite: {fileID: 197901317, guid: 22279ae3ab0e0b9419cf74ee96ed79ff, type: 3}
+  coinReward: 80
+  dropWeight: 12
+  fillSpeed: 0.55

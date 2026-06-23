@@ -45,6 +45,8 @@ public class PlayerCtrl : MonoBehaviour
             return;
         }
 
+        // Move
+
         float moveX = Input.GetAxisRaw("Horizontal");
         float moveY = Input.GetAxisRaw("Vertical");
 
