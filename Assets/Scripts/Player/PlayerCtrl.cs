@@ -34,6 +34,11 @@ public class PlayerCtrl : MonoBehaviour
 
         rb.gravityScale = 0f;
         rb.freezeRotation = true;
+
+        if (animator != null)
+        {
+            animator.SetBool("IsFishing", false);
+        }
     }
 
     private void Update()
@@ -89,6 +94,32 @@ public class PlayerCtrl : MonoBehaviour
             moveInput = Vector2.zero;
             rb.velocity = Vector2.zero;
             SetAnimationSpeed(0f);
+        }
+    }
+
+    //Fishig Movement
+
+    public void SetFishingAnimation(bool value)
+    {
+        if (animator != null)
+        {
+            animator.SetBool("IsFishing", value);
+        }
+    }
+
+    public void PlayFishingSuccess()
+    {
+        if (animator != null)
+        {
+            animator.SetTrigger("FishingSuccess");
+        }
+    }
+
+    public void PlayFishingFail()
+    {
+        if (animator != null)
+        {
+            animator.SetTrigger("FishingFail");
         }
     }
 

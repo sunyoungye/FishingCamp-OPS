@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Unity.VisualScripting;
 
 public class SimpleFishingSystem : MonoBehaviour
 {
@@ -30,6 +31,10 @@ public class SimpleFishingSystem : MonoBehaviour
     [Header("Player")]
     public PlayerCtrl playerMovement;
 
+    [Header("Result Timing")]
+    public float successAnimationDelay = 0.8f;
+    public float failAnimationDelay = 0.8f;
+
     [Header("Fishing Mini Game Settings")]
     [Range(0f, 1f)]
     public float targetValue = 0.7f;
@@ -38,7 +43,7 @@ public class SimpleFishingSystem : MonoBehaviour
     public float successTolerance = 0.08f;
 
     private bool playerInFishingSpot = false;
-    private bool isFishing = false;
+    private bool IsFishing = false;
 
     private float currentFillAmount = 0f;
     private FishDataSO currentFish;
@@ -59,7 +64,7 @@ public class SimpleFishingSystem : MonoBehaviour
 
     private void Update()
     {
-        if (!isFishing) return;
+        if (!IsFishing) return;
         if (currentFish == null) return;
 
         currentFillAmount += currentFish.fillSpeed * Time.deltaTime;
@@ -109,9 +114,12 @@ public class SimpleFishingSystem : MonoBehaviour
 
     private void OnFishingButtonClicked()
     {
-        if (!playerInFishingSpot) return;
+        if (!playerInFishingSpot)
+        {
+            return;
+        }
 
-        if (!isFishing)
+        if (!IsFishing)
         {
             StartFishing();
         }
@@ -123,6 +131,8 @@ public class SimpleFishingSystem : MonoBehaviour
 
     private void StartFishing()
     {
+        Debug.Log("StartFishing called.");
+
         currentFish = GetRandomFish();
 
         if (currentFish == null)
@@ -131,7 +141,7 @@ public class SimpleFishingSystem : MonoBehaviour
             return;
         }
 
-        isFishing = true;
+        IsFishing = true;
         currentFillAmount = 0f;
 
         ResetWaterVisual();
@@ -146,14 +156,15 @@ public class SimpleFishingSystem : MonoBehaviour
             failedImage.SetActive(false);
         }
 
-        SetFishingButtonImage(true);
+        SetFishingButtonImage(true); // Change button image as "Catch"
 
         if (playerMovement != null)
         {
             playerMovement.SetCanMove(false);
+            playerMovement.SetFishingAnimation(true);
         }
 
-        Debug.Log($"Fishing started. Hidden fish: {currentFish.fishName}, speed: {currentFish.fillSpeed}");
+        Debug.Log("Fishing animation started.");
     }
 
     private void ResetWaterVisual()
@@ -195,7 +206,7 @@ public class SimpleFishingSystem : MonoBehaviour
 
     private void TryCatchFish()
     {
-        if (!isFishing) return;
+        if (!IsFishing) return;
 
         float minSuccess = targetValue - successTolerance;
         float maxSuccess = targetValue + successTolerance;
@@ -214,56 +225,111 @@ public class SimpleFishingSystem : MonoBehaviour
 
     private void SuccessFishing()
     {
-        if (currentFish != null)
+        if (!IsFishing) return;
+
+        StartCoroutine(SuccessFishingRoutine());
+    }
+
+    private IEnumerator SuccessFishingRoutine()
+    {
+        IsFishing = false;
+
+        FishDataSO caughtFish = currentFish;
+
+        if (fishingButton != null)
+        {
+            fishingButton.gameObject.SetActive(false);
+        }
+
+        if (verticalFishingBarPanel != null)
+        {
+            verticalFishingBarPanel.gameObject.SetActive(false);
+        }
+
+        ResetWaterVisual();
+
+        if (playerMovement != null)
+        {
+            playerMovement.PlayFishingSuccess();
+        }
+
+        if (caughtFish != null)
         {
             if (inventoryManager != null)
             {
-                inventoryManager.AddFish(currentFish);
-
+                inventoryManager.AddFish(caughtFish);
             }
 
-            if (fishCaughtPopupUI != null)
-            {
-                fishCaughtPopupUI.Show(currentFish);
-            }
+            Debug.Log($"Fishing Success: {caughtFish.fishName}");
+        }
 
-            Debug.Log($@"
-{{
-    ""event"": ""fish_caught"",
-    ""result"": ""success"",
-    ""fishId"": ""{currentFish.fishId}"",
-    ""fishName"": ""{currentFish.fishName}"",
-    ""rarity"": ""{currentFish.rarity}"",
-    ""coinReward"": {currentFish.coinReward},
-    ""fillAmount"": {currentFillAmount}
-}}");
+        yield return new WaitForSeconds(successAnimationDelay);
+
+        if (playerMovement != null)
+        {
+            playerMovement.SetFishingAnimation(false);
+        }
+
+        if (caughtFish != null && fishCaughtPopupUI != null)
+        {
+            yield return StartCoroutine(fishCaughtPopupUI.ShowAndWait(caughtFish));
+        }
+
+        EndFishingKeepButton();
+    }
+    private void FailFishing()
+    {
+        if (!IsFishing) return;
+
+        StartCoroutine(FailFishingRoutine());
+    }
+
+    private IEnumerator FailFishingRoutine()
+    {
+        IsFishing = false;
+
+        if (fishingButton != null)
+        {
+            fishingButton.gameObject.SetActive(false);
+        }
+
+        if (verticalFishingBarPanel != null)
+        {
+            verticalFishingBarPanel.SetActive(false);
+        }
+
+        ResetWaterVisual();
+
+        if (playerMovement != null)
+        {
+            playerMovement.PlayFishingFail();
+        }
+
+        if (failedImage != null)
+        {
+            failedImage.SetActive(true);
+        }
+
+        Debug.Log("Fishing Failed.");
+
+        yield return new WaitForSeconds(failAnimationDelay);
+
+        if (failedImage != null)
+        {
+            failedImage.SetActive(false);
+        }
+
+        if (playerMovement != null)
+        {
+            playerMovement.SetFishingAnimation(false);
         }
 
         EndFishingKeepButton();
     }
 
-    private void FailFishing()
+    private IEnumerator EndFishingAfterDelay(float delay)
     {
-        if (!isFishing) return;
-
-        Debug.Log($@"
-{{
-    ""event"": ""fish_caught"",
-    ""result"": ""success"",
-    ""fishId"": ""{currentFish.fishId}"",
-    ""fishName"": ""{currentFish.fishName}"",
-    ""rarity"": ""{currentFish.rarity}"",
-    ""coinReward"": {currentFish.coinReward},
-    ""fillAmount"": {currentFillAmount}
-}}");
-
-        if (failedRoutine != null)
-        {
-            StopCoroutine(failedRoutine);
-        }
-
-        failedRoutine = StartCoroutine(ShowFailedImageRoutine());
-
+        yield return new WaitForSeconds(delay);
         EndFishingKeepButton();
     }
 
@@ -284,7 +350,6 @@ public class SimpleFishingSystem : MonoBehaviour
 
     private void EndFishingKeepButton()
     {
-        isFishing = false;
         currentFish = null;
         currentFillAmount = 0f;
 
@@ -299,18 +364,25 @@ public class SimpleFishingSystem : MonoBehaviour
 
         if (playerMovement != null)
         {
+            playerMovement.SetFishingAnimation(false);
             playerMovement.SetCanMove(true);
         }
 
-        if (playerInFishingSpot)
+        if (playerInFishingSpot && fishingButton != null)
         {
-            ShowFishingButton();
+            fishingButton.gameObject.SetActive(true);
         }
+    }
+
+    private IEnumerator EndFishingAfterResultDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        EndFishingKeepButton();
     }
 
     private void CancelFishingAndHide()
     {
-        isFishing = false;
+        IsFishing = false;
         currentFish = null;
         currentFillAmount = 0f;
 
@@ -328,8 +400,14 @@ public class SimpleFishingSystem : MonoBehaviour
             fishingButton.gameObject.SetActive(false);
         }
 
+        if (failedImage != null)
+        {
+            failedImage.SetActive(false);
+        }
+
         if (playerMovement != null)
         {
+            playerMovement.SetFishingAnimation(false);
             playerMovement.SetCanMove(true);
         }
     }
@@ -341,12 +419,12 @@ public class SimpleFishingSystem : MonoBehaviour
             fishingButton.gameObject.SetActive(true);
         }
 
-        SetFishingButtonImage(isFishing);
+        SetFishingButtonImage(IsFishing);
     }
 
     private void ResetFishingState()
     {
-        isFishing = false;
+        IsFishing = false;
         currentFish = null;
         currentFillAmount = 0f;
 

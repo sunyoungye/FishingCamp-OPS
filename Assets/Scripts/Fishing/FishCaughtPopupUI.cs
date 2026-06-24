@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -12,21 +13,49 @@ public class FishCaughtPopupUI : MonoBehaviour
     public TMP_Text fishNameText;
     public TMP_Text rewardText;
 
-    [Header("Fade Settings")]
-    public float fadeDuration = 0.4f;
+    [Header("Animation")]
+    public float fadeDuration = 0.35f;
     public float stayDuration = 1.5f;
+
+    private void Awake()
+    {
+        if (canvasGroup == null)
+        {
+            canvasGroup = GetComponent<CanvasGroup>();
+        }
+    }
 
     public void Show(FishDataSO fish)
     {
-        if (fish == null) return;
+        if (fish == null)
+        {
+            Debug.LogWarning("FishCaughtPopupUI.Show called with null fish");
+            return;
+        }
+
+        gameObject.SetActive(true);
 
         StopAllCoroutines();
         StartCoroutine(ShowRoutine(fish));
     }
 
+    public IEnumerator ShowAndWait(FishDataSO fish)
+    {
+        if (fish == null) yield break;
+
+        gameObject.SetActive(true);
+        StopAllCoroutines();
+
+        yield return StartCoroutine(ShowRoutine(fish));
+    }
+
     private IEnumerator ShowRoutine(FishDataSO fish)
     {
-        gameObject.SetActive(true);
+        if (canvasGroup == null)
+        {
+            Debug.LogWarning("CanvasGroup is not assigned on FishCaughtPopup UI.");
+            yield break;
+        }
 
         if (fishImage != null)
         {
@@ -49,12 +78,6 @@ public class FishCaughtPopupUI : MonoBehaviour
             rewardText.text = $"+{fish.coinReward} Coin";
         }
 
-        if (canvasGroup == null)
-        {
-            Debug.LogWarning("CanvasGroup is not assigned.");
-            yield break;
-        }
-
         canvasGroup.alpha = 0f;
 
         float time = 0f;
@@ -62,7 +85,7 @@ public class FishCaughtPopupUI : MonoBehaviour
         while (time < fadeDuration)
         {
             time += Time.deltaTime;
-            canvasGroup.alpha = Mathf.Lerp(0f, 1f, time / fadeDuration);
+            canvasGroup.alpha = Mathf.Clamp(0f, 1f, time / fadeDuration);
             yield return null;
         }
 
@@ -80,6 +103,7 @@ public class FishCaughtPopupUI : MonoBehaviour
         }
 
         canvasGroup.alpha = 0f;
+
         gameObject.SetActive(false);
     }
 }
