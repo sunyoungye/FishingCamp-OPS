@@ -14,7 +14,7 @@ public class InventoryPanelUI : MonoBehaviour
     }
 
     [Header("Managers")]
-    public InventorySystem inventorySystem;
+    public InventoryManager inventorySystem;
 
     [Header("Panel Slide")]
     public RectTransform panelRoot;
