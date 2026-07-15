@@ -20,16 +20,11 @@ public class InventoryManager : MonoBehaviour
     [Header("Capacity")]
     [SerializeField] private int maxCapacity = 60;
 
-    [Header("Currency")]
-    [SerializeField] private int coins = 0;
-
     private Dictionary<string, FishInventoryEntry> fishDictionary = new Dictionary<string, FishInventoryEntry>();
 
     public event Action OnInventoryChanged;
-    public event Action<int> OnCoinsChanged;
 
     public int MaxCapacity => maxCapacity;
-    public int Coins => coins;
 
     public int CapacityUsed
     {
@@ -69,8 +64,6 @@ public class InventoryManager : MonoBehaviour
             fishDictionary.Add(fish.fishId, new FishInventoryEntry(fish, 1));
         }
 
-        AddCoins(fish.coinReward);
-
         OnInventoryChanged?.Invoke();
 
         Debug.Log($"Inventory Added: {fish.fishName} x{fishDictionary[fish.fishId].count}");
@@ -78,13 +71,44 @@ public class InventoryManager : MonoBehaviour
         return true;
     }
 
-    public void AddCoins(int amount)
+    public bool RemoveFish(string fishId, int amount)
     {
-        coins += amount;
-        OnCoinsChanged?.Invoke(coins);
+        if (string.IsNullOrEmpty(fishId))
+        {
+            return false;
+        }
 
-        Debug.Log($"Coins: {coins}");
+        if (amount <= 0)
+        {
+            return false;
+        }
+
+        if (!fishDictionary.ContainsKey(fishId))
+        {
+            return false;
+        }
+
+        FishInventoryEntry entry = fishDictionary[fishId];
+
+        if (entry.count < amount)
+        {
+            return false;
+        }
+
+        entry.count -= amount;
+
+        if (entry.count <= 0)
+        {
+            fishDictionary.Remove(fishId);
+        }
+
+        OnInventoryChanged?.Invoke();
+
+        Debug.Log($"Inventory Removed: {fishId} x{amount}");
+
+        return true;
     }
+
 
     public List<FishInventoryEntry> GetAllFish()
     {
@@ -99,5 +123,20 @@ public class InventoryManager : MonoBehaviour
         }
 
         return 0;
+    }
+
+    public bool HasFish(string fishId, int amount)
+    {
+        if (string.IsNullOrEmpty (fishId))
+        {
+            return false;
+        }
+
+        if (!fishDictionary.ContainsKey(fishId))
+        {
+            return false;
+        }
+
+        return fishDictionary[fishId].count >= amount;
     }
 }

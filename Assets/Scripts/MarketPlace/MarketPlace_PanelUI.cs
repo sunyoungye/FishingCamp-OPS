@@ -3,111 +3,151 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class MarketPlace_PanelUI : MonoBehaviour
 {
-    [Header("Panel Side")]
-    public RectTransform panelRoot;
-    public CanvasGroup panelCanvasGroup;
-    public Button marketPlaceButton;
+    private enum MarketTab
+    {
+        OceanMarket,
+        MyStall
+    }
+
+    [Header("Managers")]
+    public LocalMarketplaceManager marketplaceManager;
+
+    [Header("Panel")]
+    public GameObject panelRoot;
+    public Button marketplaceButton;
     public Button closeButton;
 
-    public Vector2 openPosition = new Vector2(0f, 1f);
-    public Vector2 closePosition = new Vector2(1440f, 0f);
-    public float slideDuration = 0.75f;
+    [Header("Tab Buttons")]
+    public Button oceanMarketTabButton;
+    public Button myStallTabButton;
 
-    private bool isOpen = false;
-    private Coroutine slideRoutine;
+    [Header("Views")]
+    public GameObject oceanMarketView;
+    public GameObject myStallView;
 
-    public void Start()
+    [Header("Ocean Market")]
+    public Transform oceanListingContent;
+    public MarketListingCardUI listingCardPrefab;
+
+    [Header("My Stall")]
+    public TMP_Text myStallInfoText;
+
+    private MarketTab currentTab = MarketTab.OceanMarket;
+
+    private void Start()
     {
-        if (marketPlaceButton != null)
+        if (marketplaceButton != null)
         {
-            marketPlaceButton.onClick.AddListener(ToggleDown);
+            marketplaceButton.onClick.AddListener(OpenPanel);
+        }
+
+        if (closeButton != null)
+        {
+            closeButton.onClick.AddListener(ClosePanel);
+        }
+
+        if (oceanMarketTabButton != null)
+        {
+            oceanMarketTabButton.onClick.AddListener(() => SetTab(MarketTab.OceanMarket));
+        }
+
+        if (myStallTabButton != null)
+        {
+            myStallTabButton.onClick.AddListener(() => SetTab(MarketTab.MyStall));
+        }
+
+        if (marketplaceManager != null)
+        {
+            marketplaceManager.OnListingsChanged += RefreshOceanMarket;
+        }
+
+        ClosePanel();
+    }
+
+    private void OnDestroy()
+    {
+        if (marketplaceManager != null)
+        {
+            marketplaceManager.OnListingsChanged -= RefreshOceanMarket;
         }
     }
 
-    private void ToggleDown()
+    public void OpenPanel()
     {
-        if (isOpen)
+        if (panelRoot != null)
         {
-            CloseMarketPlace();
+            panelRoot.SetActive(true);
+        }
+
+        SetTab(currentTab);
+    }
+
+    public void ClosePanel()
+    {
+        if (panelRoot != null)
+        {
+            panelRoot.SetActive(false);
+        }
+    }
+
+    private void SetTab(MarketTab tab)
+    {
+        currentTab = tab;
+
+        if (oceanMarketView != null)
+        {
+            oceanMarketView.SetActive(tab == MarketTab.OceanMarket);
+        }
+
+        if (myStallView != null)
+        {
+            myStallView.SetActive(tab == MarketTab.MyStall);
+        }
+
+        if (tab == MarketTab.OceanMarket)
+        {
+            if (marketplaceManager != null)
+            {
+                RefreshOceanMarket(marketplaceManager.GetRandomListings());
+            }
         }
         else
         {
-            OpenMarketPlace();
+            if (myStallInfoText != null)
+            {
+                myStallInfoText.text = "My Stall is next step";
+            }
         }
     }
 
-    private void OpenMarketPlace()
+    private void RefreshOceanMarket(List<MarketListing> listings)
     {
-        isOpen = true;
-
-        if (panelCanvasGroup != null)
+        if (oceanListingContent == null || listingCardPrefab == null)
         {
-            panelCanvasGroup.blocksRaycasts = true;
-            panelCanvasGroup.interactable = true;
-            panelCanvasGroup.alpha = 1f;
+            return;
         }
 
-        StartSlide(openPosition);
-    }
-
-    private void StartSlide(Vector2 targetPosition)
-    {
-        if (slideRoutine != null)
+        foreach (Transform child in oceanListingContent)
         {
-            StopCoroutine(slideRoutine);
+            Destroy(child.gameObject);
         }
 
-        slideRoutine = StartCoroutine(SlideRoutine(targetPosition));
-    }
-
-    private IEnumerator SlideRoutine(Vector2 targetPosition)
-    {
-        if (panelRoot == null)
+        foreach (MarketListing listing in listings)
         {
-            yield break;
-        }
-
-        Vector2 startPosition = panelRoot.anchoredPosition;
-        float time = 0f;
-
-        while(time < slideDuration)
-        {
-            time += Time.deltaTime;
-            float t = Mathf.Clamp01(time / slideDuration);
-            t = Mathf.SmoothStep(0f, 1f, t);
-
-            panelRoot.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, t);
-            yield return null;
+            MarketListingCardUI card = Instantiate(listingCardPrefab, oceanListingContent);
+            card.Setup(listing, OnBuyClicked);
         }
     }
 
-    private void CloseMarketPlace()
+    private void OnBuyClicked(MarketListing listing)
     {
-        isOpen = false;
-
-        if (panelCanvasGroup != null)
+        if (marketplaceManager != null)
         {
-            panelCanvasGroup.blocksRaycasts = false;
-            panelCanvasGroup.interactable = false;
+            marketplaceManager.BuyListing(listing);
         }
-
-        StartSlide(closePosition);
-    }
-
-    public void OpenMarket()
-    {
-        isOpen = true;
-
-        if (panelCanvasGroup != null)
-        {
-            panelCanvasGroup.blocksRaycasts = true;
-            panelCanvasGroup.interactable = true;
-            panelCanvasGroup.alpha = 1f;
-        }
-
-        StartSlide(openPosition);
     }
 }

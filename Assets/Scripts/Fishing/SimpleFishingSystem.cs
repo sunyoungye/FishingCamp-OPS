@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Unity.VisualScripting;
+using UnityEditor.SceneManagement;
 
 public class SimpleFishingSystem : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public class SimpleFishingSystem : MonoBehaviour
 
     [Header("Managers")]
     public InventoryManager inventoryManager;
+    public CurrencyManager currencyManager;
     public FishCaughtPopupUI fishCaughtPopupUI;
 
     [Header("Button UI")]
@@ -233,6 +235,7 @@ public class SimpleFishingSystem : MonoBehaviour
     private IEnumerator SuccessFishingRoutine()
     {
         IsFishing = false;
+        bool added = false;
 
         FishDataSO caughtFish = currentFish;
 
@@ -257,7 +260,12 @@ public class SimpleFishingSystem : MonoBehaviour
         {
             if (inventoryManager != null)
             {
-                inventoryManager.AddFish(caughtFish);
+                added = inventoryManager.AddFish(currentFish);
+            }
+
+            if (added && currencyManager != null && currentFish != null)
+            {
+                currencyManager.AddCoins(currentFish.coinReward);
             }
 
             Debug.Log($"Fishing Success: {caughtFish.fishName}");
