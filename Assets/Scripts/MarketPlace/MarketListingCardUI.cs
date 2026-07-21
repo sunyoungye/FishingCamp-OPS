@@ -6,21 +6,22 @@ using TMPro;
 public class MarketListingCardUI : MonoBehaviour
 {
     [Header("UI")]
+    public Button cardButton;
+    public GameObject selectedFrame;
+
     public Image fishIcon;
     public TMP_Text fishNameText;
-    public TMP_Text rarityText;
     public TMP_Text sellerNameText;
     public TMP_Text priceText;
     public TMP_Text timerText;
-    public Button buyButton;
 
     private MarketListing currentListing;
-    private Action<MarketListing> onBuyClicked;
+    private Action<MarketListing, MarketListingCardUI> onCardClicked;
 
-    public void Setup(MarketListing listing, Action<MarketListing> buyCallback)
+    public void Setup(MarketListing listing, Action<MarketListing, MarketListingCardUI> clickCallback)
     {
         currentListing = listing;
-        onBuyClicked = buyCallback;
+        onCardClicked = clickCallback;
 
         if (listing == null || listing.fish == null)
         {
@@ -31,6 +32,7 @@ public class MarketListingCardUI : MonoBehaviour
         {
             fishIcon.sprite = listing.fish.fishSprite;
             fishIcon.preserveAspect = true;
+            fishIcon.enabled = listing.fish.fishSprite != null;
         }
 
         if (fishNameText != null)
@@ -38,27 +40,23 @@ public class MarketListingCardUI : MonoBehaviour
             fishNameText.text = listing.fish.fishName;
         }
 
-        if (rarityText != null)
-        {
-            rarityText.text = listing.fish.rarity.ToString();
-        }
-
         if (sellerNameText != null)
         {
-            sellerNameText.text = $"Seller: {listing.sellerName}";
+            sellerNameText.text = $"by {listing.sellerName}";
         }
 
         if (priceText != null)
         {
-            priceText.text = $"{listing.price} Coin";
+            priceText.text = listing.price.ToString();
         }
 
-        if (buyButton != null)
+        if (cardButton != null)
         {
-            buyButton.onClick.RemoveAllListeners();
-            buyButton.onClick.AddListener(OnBuyButtonClicked);
+            cardButton.onClick.RemoveAllListeners();
+            cardButton.onClick.AddListener(OnClickCard);
         }
 
+        SetSelected(false);
         UpdateTimerText();
     }
 
@@ -81,8 +79,16 @@ public class MarketListingCardUI : MonoBehaviour
         timerText.text = $"{minutes:00}:{seconds:00}";
     }
 
-    private void OnBuyButtonClicked()
+    private void OnClickCard()
     {
-        onBuyClicked?.Invoke(currentListing);
+        onCardClicked?.Invoke(currentListing, this);
+    }
+
+    public void SetSelected(bool selected)
+    {
+        if (selectedFrame != null)
+        {
+            selectedFrame.SetActive(selected);
+        }
     }
 }

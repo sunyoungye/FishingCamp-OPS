@@ -17,4 +17,23 @@ public class FishDatabase : MonoBehaviour
         int index = Random.Range(0, allFish.Count);
         return allFish[index];
     }
+
+    public FishDataSO GetFishById(string fishId)
+    {
+        if (string.IsNullOrWhiteSpace(fishId))
+        {
+            return null;
+        }
+
+        foreach (FishDataSO fish in allFish)
+        {
+            if (fish != null && fish.fishId == fishId)
+            {
+                return fish;
+            }
+        }
+
+        Debug.LogWarning($"Fish not found: {fishId}");
+        return null;
+    }
 }

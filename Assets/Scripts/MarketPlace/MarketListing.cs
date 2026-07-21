@@ -9,12 +9,16 @@ public class MarketListing
     public string listingId;
 
     public FishDataSO fish;
+    public string fishId;
+
     public int quantity;
     public int price;
 
+    public string sellerPlayerId;
     public string sellerName;
-    public float remainingTime;
 
+    public float remainingTime;
     public bool isSold;
-    public bool isPlayerListing;
+
+    public bool isNpcListing;
 }
