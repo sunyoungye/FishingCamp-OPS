@@ -12,7 +12,7 @@ public class MarketPlace_PanelUI : MonoBehaviour
     }
 
     [Header("Managers")]
-    public LocalMarketplaceManager marketplaceManager;
+    public NetworkMarketplaceManager marketplaceManager;
     public InventoryManager inventoryManager;
 
     [Header("Panel")]
@@ -64,6 +64,14 @@ public class MarketPlace_PanelUI : MonoBehaviour
     public MyStallListingCardUI myStallListingCardPrefab;
     public TMP_Text listingCountText;
 
+    [Header("Server Market Filters")]
+    public TMP_InputField serverSearchInputFIeld;
+    public TMP_Dropdown serverRarityDropdown;
+    public TMP_Dropdown serverSortDropdown;
+    public Button serverRefreshButton;
+
+    private List<MarketListing> cachedServerListings = new List<MarketListing>();
+
     [Header("Optional Old Text")]
     public TMP_Text myStallInfoText;
 
@@ -96,6 +104,34 @@ public class MarketPlace_PanelUI : MonoBehaviour
         if (myStallTabButton != null)
         {
             myStallTabButton.onClick.AddListener(() => SetTab(MarketTab.MyStall));
+        }
+
+        // Header Gruop in Marketplace Panel
+        if (serverSearchInputFIeld != null)
+        {
+            serverSearchInputFIeld.onValueChanged.AddListener((value) => RefreshOceanMarket(cachedServerListings));
+        }
+
+        if (serverRarityDropdown != null)
+        {
+            serverRarityDropdown.onValueChanged.AddListener((value) => RefreshOceanMarket(cachedServerListings));
+        }
+
+        if (serverSortDropdown != null)
+        {
+            serverSortDropdown.onValueChanged.AddListener((value) => RefreshOceanMarket(cachedServerListings));
+        }
+
+        if (serverRefreshButton != null)
+        {
+            serverRefreshButton.onClick.AddListener(() =>
+            {
+                if (marketplaceManager != null)
+                {
+                    RefreshOceanMarket(marketplaceManager.GetRandomListings());
+                }
+            });
+
         }
 
         if (buyNowButton != null)
@@ -222,6 +258,15 @@ public class MarketPlace_PanelUI : MonoBehaviour
 
     private void RefreshOceanMarket(List<MarketListing> listings)
     {
+        if (listings == null)
+        {
+            listings = new List<MarketListing>();
+        }
+
+        cachedServerListings = new List<MarketListing>(listings);
+
+        //listings = ApplyServerMarketFilters(listings);
+
         if (oceanListingContent == null || listingCardPrefab == null)
         {
             Debug.LogWarning("RefreshOceanMarket failed: content or prefab is missing.");
@@ -297,6 +342,110 @@ public class MarketPlace_PanelUI : MonoBehaviour
         }
     }
 
+    // For Header Group in Marketplace Panel
+
+    private List<MarketListing> ApplyServerMarketFilters(List<MarketListing> source)
+    {
+        List<MarketListing> result = new List<MarketListing>();
+
+        if (source == null)
+        {
+            return result;
+        }
+
+        string search = " ";
+
+        if (serverSearchInputFIeld != null)
+        {
+            search = serverSearchInputFIeld.text.Trim().ToLower();
+        }
+
+        string rarityFilter = "All";
+
+        if (serverRarityDropdown != null &&
+            serverRarityDropdown.options != null &&
+            serverRarityDropdown.options.Count >0)
+        {
+            rarityFilter = serverRarityDropdown.options[serverRarityDropdown.value].text;
+        }
+
+        foreach (MarketListing listing in source)
+        {
+            if (listing == null || listing.fish == null)
+            {
+                continue;
+            }
+
+            bool matchSearch = true;
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                string fishName = listing.fish.fishName.ToLower();
+                string sellerName = "";
+
+                if (!string.IsNullOrEmpty(listing.sellerName))
+                {
+                    sellerName = listing.sellerName.ToLower();
+                }
+
+                matchSearch =
+                    fishName.Contains(search) ||
+                    sellerName.Contains(search);
+            }
+
+            bool matchRarity = true;
+
+            if (rarityFilter != "All")
+            {
+                matchRarity = listing.fish.rarity.ToString() == rarityFilter;
+            }
+
+            if (matchSearch && matchRarity)
+            {
+                result.Add(listing);
+            }
+        }
+
+        //ApplyServerMarketFilters(result);
+
+        return result;
+    }
+
+
+    private void ApplyServerMarketSort(List<MarketListing> listings)
+    {
+        if (serverSortDropdown == null)
+        {
+            return;
+        }
+
+        if (serverSortDropdown == null ||
+            serverSortDropdown.options == null ||
+            serverSortDropdown.options.Count == 0)
+        {
+            return;
+        }
+
+        string sort = serverSortDropdown.options[serverSortDropdown.value].text;
+
+        if (sort == "Price Low")
+        {
+            listings.Sort((a, b) => a.price.CompareTo(b.price));
+            return;
+        }
+
+        if (sort == "Price High")
+        {
+            listings.Sort((a, b) => b.price.CompareTo(a.price));
+            return;
+        }
+
+        if (sort == "Time Left")
+        {
+            listings.Sort((a, b) => a.remainingTime.CompareTo(b.remainingTime));
+            return;
+        }
+    }
     private void OnListingCardClicked(MarketListing listing, MarketListingCardUI card)
     {
         if (selectedCard != null)

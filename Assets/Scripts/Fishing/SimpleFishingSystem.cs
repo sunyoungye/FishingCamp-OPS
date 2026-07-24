@@ -2,9 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
-using Unity.VisualScripting;
-using UnityEditor.SceneManagement;
 
 public class SimpleFishingSystem : MonoBehaviour
 {

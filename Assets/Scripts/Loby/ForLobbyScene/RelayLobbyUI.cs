@@ -13,6 +13,8 @@ using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using Unity.Networking.Transport.Relay;
 
+using System.Threading.Tasks;
+
 public class RelayLobbyUI : MonoBehaviour
 {
     [Header("UI")]
@@ -31,22 +33,28 @@ public class RelayLobbyUI : MonoBehaviour
     private string currentJoinCode = "";
     private bool callbacksRegistered = false;
 
+    private Task unityServicesTask;
+    private bool isBusy = false;
+
     private async void Start()
     {
         if (createServerButton != null)
         {
             createServerButton.onClick.AddListener(CreateRelayServer);
+            createServerButton.interactable = false;
         }
 
         if (joinServerButton != null)
         {
             joinServerButton.onClick.AddListener(JoinRelayServer);
+            joinServerButton.interactable = false;
         }
 
         if (startGameButton != null)
         {
             startGameButton.onClick.AddListener(StartGame);
             startGameButton.interactable = false;
+            startGameButton.gameObject.SetActive(false);
         }
 
         if (roomCodeText != null)
@@ -56,9 +64,29 @@ public class RelayLobbyUI : MonoBehaviour
 
         RegisterNetworkCallbacks();
 
-        await InitializeUnityServicesAsync();
+        try
+        {
+            await InitializeUnityServicesAsync();
 
-        SetStatus("Ready");
+            if (createServerButton != null)
+            {
+                createServerButton.interactable = true;
+            }
+
+            if (joinServerButton != null)
+            {
+                joinServerButton.interactable = true;
+            }
+
+            SetStatus("Ready");
+        }
+        catch (Exception e)
+        {
+            SetStatus("Unity Services Initialize Failed.");
+            Debug.LogError(e);
+        }
+
+        
     }
 
     private void OnDestroy()
@@ -89,36 +117,60 @@ public class RelayLobbyUI : MonoBehaviour
 
     private async Task InitializeUnityServicesAsync()
     {
+        if (unityServicesTask != null)
+        {
+            await unityServicesTask;
+            return;
+        }
+
+        unityServicesTask = InitializeUnityServicesInternalAsync();
+
         try
         {
-            if (UnityServices.State != ServicesInitializationState.Initialized)
-            {
-                SetStatus("Initializing Unity Services...");
-                await UnityServices.InitializeAsync();
-            }
-
-            if (!AuthenticationService.Instance.IsSignedIn)
-            {
-                SetStatus("Signing in anonymously...");
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
-            }
-
-            Debug.Log($"Unity Services Ready. PlayerId: {AuthenticationService.Instance.PlayerId}");
+            await unityServicesTask;
         }
-        catch (Exception e)
+        catch
         {
-            SetStatus("Unity Services Initialize Failed.");
-            Debug.LogError(e);
+            unityServicesTask = null;
+            throw;
         }
+    }
+
+    private async Task InitializeUnityServicesInternalAsync()
+    {
+        if (UnityServices.State != ServicesInitializationState.Initialized)
+        {
+            SetStatus("Initializing Unity Services...");
+            await UnityServices.InitializeAsync();
+        }
+
+        if (AuthenticationService.Instance.IsSignedIn)
+        {
+            Debug.Log($"Already Signed In. PlayerId: {AuthenticationService.Instance.PlayerId}");
+            return;
+        }
+
+        SetStatus("Signing in anonymously...");
+        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+
+        Debug.Log($"Unity Services Ready. PlayerId: {AuthenticationService.Instance.PlayerId}");
     }
 
     private async void CreateRelayServer()
     {
+        if (isBusy)
+        {
+            Debug.LogWarning("Already processing request.");
+        }
+
+        isBusy = true;
+
         SavePlayerName();
 
         if (NetworkManager.Singleton == null)
         {
             SetStatus("NetworkManager is missing.");
+            isBusy = false;
             return;
         }
 
@@ -128,6 +180,8 @@ public class RelayLobbyUI : MonoBehaviour
             SetStatus("Creating Relay Room...");
 
             await InitializeUnityServicesAsync();
+
+            SetStatus("Creating Relay Room...");
 
             int maxConnections = Mathf.Max(1, maxPlayers - 1);
 
@@ -140,6 +194,7 @@ public class RelayLobbyUI : MonoBehaviour
             {
                 SetStatus("UnityTransport is missing.");
                 SetButtonsInteractable(true);
+                isBusy = false;
                 return;
             }
 
@@ -152,6 +207,7 @@ public class RelayLobbyUI : MonoBehaviour
             {
                 SetStatus("StartHost Failed.");
                 SetButtonsInteractable(true);
+                isBusy = false;
                 return;
             }
 
@@ -164,6 +220,7 @@ public class RelayLobbyUI : MonoBehaviour
 
             if (startGameButton != null)
             {
+                startGameButton.gameObject.SetActive(true);
                 startGameButton.interactable = true;
             }
 
@@ -183,6 +240,8 @@ public class RelayLobbyUI : MonoBehaviour
             Debug.LogError(e);
             SetButtonsInteractable(true);
         }
+
+        isBusy = false;
     }
 
     private async void JoinRelayServer()
